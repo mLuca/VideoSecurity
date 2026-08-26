@@ -73,13 +73,13 @@ def main():
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.frame_width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.frame_height)
 
-    fps = config.target_fps
-    frame_interval = 1.0 / fps if fps > 0 else 0.0
-    logger.info("Target processing FPS: %d (frame interval %.3fs).", fps, frame_interval)
+    target_fps = config.target_fps
+    frame_interval = 1.0 / target_fps if target_fps > 0 else 0.0
+    logger.info("Target processing FPS: %d (frame interval %.3fs).", target_fps, frame_interval)
 
-    ring_buffer_size = max(1, round(fps * (config.pre_time + config.post_time)))
+    ring_buffer_size = max(1, round(target_fps * (config.pre_time + config.post_time)))
     ring_buffer = RingBuffer(ring_buffer_size)
-    recorder = EventRecorder(config, logger, fps)
+    recorder = EventRecorder(config, logger, target_fps)
 
     web_thread = threading.Thread(target=start_web_server, args=(config,), daemon=True)
     web_thread.start()
@@ -92,7 +92,7 @@ def main():
         logger.info("No desktop display detected. Running headless; no GUI window will be shown.")
 
     try:
-        behind_schedule = False
+        was_behind_schedule = False
         while True:
             iteration_start = time.monotonic()
             try:
@@ -142,17 +142,19 @@ def main():
                     remaining = frame_interval - elapsed
                     if remaining > 0:
                         time.sleep(remaining)
-                        behind_schedule = False
+                        if was_behind_schedule:
+                            was_behind_schedule = False
+                            logger.info("Fps processed recovered to target_fps=%d again", target_fps)
                     elif remaining < 0:
-                        if not behind_schedule:
+                        if not was_behind_schedule:
                             achieved_fps = 1.0 / elapsed if elapsed > 0 else float("inf")
                             logger.warning(
                                 "Falling behind target_fps=%d: iteration took %.3fs (~%.2f FPS achieved).",
-                                fps,
+                                target_fps,
                                 elapsed,
                                 achieved_fps,
                             )
-                            behind_schedule = True
+                            was_behind_schedule = True
     except KeyboardInterrupt:
         logger.info("Shutdown requested (Ctrl+C).")
     finally:
