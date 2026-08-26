@@ -1,4 +1,8 @@
-"""Flask web UI: password-protected Captures and Logs viewer."""
+"""Flask API + static server for the React (Vite) frontend.
+
+The frontend is a Vite/React SPA built into frontend/dist. Flask only serves
+the JSON API (auth, captures listing, logs) plus the built static assets.
+"""
 from __future__ import annotations
 
 import hmac
@@ -6,7 +10,7 @@ import time
 from functools import wraps
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request, send_from_directory, session
+from flask import Flask, jsonify, request, send_from_directory, session
 
 from app.config import Config
 from app.logging_provider import get_logger
@@ -15,6 +19,8 @@ from app.logging_provider import get_logger
 _login_attempts: dict[str, tuple[int, float]] = {}
 _MAX_ATTEMPTS = 5
 _LOCKOUT_SECONDS = 30
+
+FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 
 
 def _is_locked_out(ip: str) -> bool:
@@ -44,7 +50,7 @@ def login_required(view):
 
 
 def create_app(config: Config) -> Flask:
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder=None)
     app.secret_key = config.web_secret_key
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
@@ -58,40 +64,31 @@ def create_app(config: Config) -> Flask:
             "Set the WEBUI_PASSWORD environment variable."
         )
 
-    @app.get("/login")
-    def login_page():
-        if session.get("authenticated"):
-            return render_template("index.html")
-        return render_template("login.html", error=None)
+    @app.get("/api/session")
+    def api_session():
+        return jsonify({"authenticated": bool(session.get("authenticated"))})
 
-    @app.post("/login")
-    def login_submit():
+    @app.post("/api/login")
+    def api_login():
         ip = request.remote_addr or "unknown"
         if _is_locked_out(ip):
-            return render_template(
-                "login.html", error="Too many attempts. Try again later."
-            ), 429
+            return jsonify({"error": "Too many attempts. Try again later."}), 429
 
-        password = request.form.get("password", "")
+        data = request.get_json(silent=True) or {}
+        password = data.get("password", "")
         if hmac.compare_digest(password, config.web_password):
             _clear_failures(ip)
             session["authenticated"] = True
-            return render_template("index.html")
+            return jsonify({"ok": True})
 
         _register_failure(ip)
         logger.warning("Failed web UI login attempt from %s", ip)
-        return render_template("login.html", error="Invalid password."), 401
+        return jsonify({"error": "Invalid password."}), 401
 
-    @app.get("/logout")
-    def logout():
+    @app.post("/api/logout")
+    def api_logout():
         session.clear()
-        return render_template("login.html", error=None)
-
-    @app.get("/")
-    def index():
-        if not session.get("authenticated"):
-            return render_template("login.html", error=None)
-        return render_template("index.html")
+        return jsonify({"ok": True})
 
     @app.get("/api/captures")
     @login_required
@@ -130,5 +127,17 @@ def create_app(config: Config) -> Flask:
             fh.seek(max(0, size - max_bytes))
             content = fh.read()
         return jsonify({"content": content})
+
+    @app.get("/assets/<path:filename>")
+    def frontend_assets(filename: str):
+        return send_from_directory(FRONTEND_DIST / "assets", filename)
+
+    @app.get("/")
+    @app.get("/<path:filename>")
+    def frontend_index(filename: str = "index.html"):
+        candidate = FRONTEND_DIST / filename
+        if candidate.is_file():
+            return send_from_directory(FRONTEND_DIST, filename)
+        return send_from_directory(FRONTEND_DIST, "index.html")
 
     return app

@@ -25,6 +25,14 @@ body {
   color: var(--text);
 }
 
+.loading-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
 /* Login page */
 .login-wrapper {
   min-height: 100vh;
@@ -76,6 +84,11 @@ body {
   cursor: pointer;
 }
 
+.login-card button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .error {
   color: var(--error);
   font-size: 0.85rem;
@@ -97,9 +110,12 @@ body {
 }
 
 .logout-link {
+  background: none;
+  border: none;
   color: var(--accent);
-  text-decoration: none;
   font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
 }
 
 .tabs {
@@ -180,5 +196,13 @@ main {
 @media (min-width: 768px) {
   .tabs {
     max-width: 300px;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1200px) {
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
   }
 }
