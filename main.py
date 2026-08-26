@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 import threading
+import time
 from pathlib import Path
 
 import cv2
@@ -72,10 +73,9 @@ def main():
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.frame_width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.frame_height)
 
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    if not fps or fps <= 0:
-        fps = config.default_fps
-    logger.info("Camera FPS: %.2f", fps)
+    fps = config.target_fps
+    frame_interval = 1.0 / fps if fps > 0 else 0.0
+    logger.info("Target processing FPS: %d (frame interval %.3fs).", fps, frame_interval)
 
     ring_buffer_size = max(1, round(fps * (config.pre_time + config.post_time)))
     ring_buffer = RingBuffer(ring_buffer_size)
@@ -92,46 +92,67 @@ def main():
         logger.info("No desktop display detected. Running headless; no GUI window will be shown.")
 
     try:
+        behind_schedule = False
         while True:
-            ret, frame = cap.read()
-            if not ret:
-                logger.error("Failed to read a frame from the webcam.")
-                break
-
-            ring_buffer.append(frame)
-
+            iteration_start = time.monotonic()
             try:
-                results = model(frame, verbose=False)
-            except Exception:
-                logger.exception("Model inference failed.")
-                continue
+                ret, frame = cap.read()
+                if not ret:
+                    logger.error("Failed to read a frame from the webcam.")
+                    break
 
-            # Only pay the annotation-drawing cost when it's actually needed.
-            needs_annotated_frame = gui_enabled or stream_hub.has_viewers
+                ring_buffer.append(frame)
 
-            if recorder.is_recording:
-                recorder.feed_post_frame(frame)
-                annotated_frame = results[0].plot() if needs_annotated_frame else None
-            else:
-                annotated_frame = None
                 try:
-                    detections = extract_detections(results[0], config.detection_confidence)
-                    trigger_event = find_trigger(detections, config.frame_width, config.frame_height, config)
-                    if trigger_event is not None:
-                        annotated_frame = results[0].plot()
-                        recorder.maybe_trigger(trigger_event, annotated_frame, ring_buffer.snapshot())
+                    results = model(frame, verbose=False)
                 except Exception:
-                    logger.exception("Error while evaluating trigger condition.")
+                    logger.exception("Model inference failed.")
+                    continue
 
-                if needs_annotated_frame and annotated_frame is None:
-                    annotated_frame = results[0].plot()
+                # Only pay the annotation-drawing cost when it's actually needed.
+                needs_annotated_frame = gui_enabled or stream_hub.has_viewers
 
-            if annotated_frame is not None and stream_hub.has_viewers:
-                stream_hub.publish_frame(annotated_frame)
+                if recorder.is_recording:
+                    recorder.feed_post_frame(frame)
+                    annotated_frame = results[0].plot() if needs_annotated_frame else None
+                else:
+                    annotated_frame = None
+                    try:
+                        detections = extract_detections(results[0], config.detection_confidence)
+                        trigger_event = find_trigger(detections, config.frame_width, config.frame_height, config)
+                        if trigger_event is not None:
+                            annotated_frame = results[0].plot()
+                            recorder.maybe_trigger(trigger_event, annotated_frame, ring_buffer.snapshot())
+                    except Exception:
+                        logger.exception("Error while evaluating trigger condition.")
 
-            if gui_enabled:
-                cv2.imshow("Muelltonnen Security", annotated_frame)
-                cv2.waitKey(1)
+                    if needs_annotated_frame and annotated_frame is None:
+                        annotated_frame = results[0].plot()
+
+                if annotated_frame is not None and stream_hub.has_viewers:
+                    stream_hub.publish_frame(annotated_frame)
+
+                if gui_enabled:
+                    cv2.imshow("Muelltonnen Security", annotated_frame)
+                    cv2.waitKey(1)
+            finally:
+                # Pace the loop to target_fps regardless of how the iteration exited.
+                if frame_interval > 0:
+                    elapsed = time.monotonic() - iteration_start
+                    remaining = frame_interval - elapsed
+                    if remaining > 0:
+                        time.sleep(remaining)
+                        behind_schedule = False
+                    elif remaining < 0:
+                        if not behind_schedule:
+                            achieved_fps = 1.0 / elapsed if elapsed > 0 else float("inf")
+                            logger.warning(
+                                "Falling behind target_fps=%d: iteration took %.3fs (~%.2f FPS achieved).",
+                                fps,
+                                elapsed,
+                                achieved_fps,
+                            )
+                            behind_schedule = True
     except KeyboardInterrupt:
         logger.info("Shutdown requested (Ctrl+C).")
     finally:

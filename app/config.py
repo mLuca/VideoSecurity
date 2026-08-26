@@ -43,7 +43,9 @@ class Config:
     camera_index: int = 0
     frame_width: int = 640
     frame_height: int = 480
-    default_fps: float = 15.0
+    # Target rate at which the main loop reads/processes frames; the loop paces
+    # itself (via sleeps) to match this, regardless of the camera's native FPS.
+    target_fps: int = 15
     detection_confidence: float = 0.5
 
     # Class names as defined in Model metadata.yaml
@@ -52,7 +54,7 @@ class Config:
 
     # Ring buffer / recording timing (seconds)
     pre_time: int = 5
-    post_time: int = 10
+    post_time: int = 5
 
     # Trigger proximity thresholds ("lower and more to the right by at most
     # 60px, or 10% of the frame dimension - whichever is larger")

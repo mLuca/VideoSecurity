@@ -4,7 +4,7 @@
     "camera_index": 0,
     "frame_width": 640,
     "frame_height": 480,
-    "default_fps": 15.0,
+    "target_fps": 15,
     "detection_confidence": 0.5
   },
   "class_names": {
@@ -31,6 +31,6 @@
     "web_host": "0.0.0.0",
     "web_port": 5000,
     "web_password": "changeme",
-    "web_secret_key": "2dc12cd3b4aae04dff6d8bd68cb3ea1fd2a357de92288dde7301bbc99acabd49"
+    "web_secret_key": "81c78a8793d771738ac615e1484c7adce4e327bf68184dfcfdecd00145996648"
   }
 }

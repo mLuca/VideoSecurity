@@ -23,7 +23,7 @@ _SECTIONS: dict[str, list[str]] = {
         "camera_index",
         "frame_width",
         "frame_height",
-        "default_fps",
+        "target_fps",
         "detection_confidence",
     ],
     "class_names": ["person_class_name", "trashbin_class_name"],
