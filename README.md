@@ -32,11 +32,18 @@ API server) and a React frontend (the browser UI). They communicate over HTTP/JS
   as `[date]-[time]_video.mp4`. Both files are written to `data/captures/`.
 - **[app/logging_provider.py](app/logging_provider.py)** — configures logging to both
   the console and a rotating logfile at `data/logs/app.log`.
+- **[app/live_stream.py](app/live_stream.py)** — `StreamHub`, a thread-safe hand-off
+  point for the live view. The capture loop publishes newly annotated frames into it
+  only while `has_viewers` is true (i.e. the Live Stream tab is open), so no extra
+  annotation work happens otherwise.
 - **[app/webapp/server.py](app/webapp/server.py)** — a Flask app that exposes a small
   JSON API (`/api/session`, `/api/login`, `/api/logout`, `/api/captures`, `/api/logs`,
-  `/captures/<file>`) and serves the built React frontend as static files. Login is
-  password-based (`WEBUI_PASSWORD`), backed by a server-side session cookie, with a
-  simple brute-force lockout after repeated failed attempts.
+  `/captures/<file>`, `/api/stream`) and serves the built React frontend as static
+  files. Login is password-based (`WEBUI_PASSWORD`), backed by a server-side session
+  cookie, with a simple brute-force lockout after repeated failed attempts.
+  `/api/stream` serves an MJPEG (`multipart/x-mixed-replace`) feed of the annotated
+  frames, registering/deregistering a viewer with `StreamHub` for the lifetime of the
+  HTTP connection.
 
 ### Frontend (`frontend/`)
 
@@ -47,11 +54,16 @@ A Vite + React single-page app that talks to the Flask API above.
 - **[frontend/src/components/LoginPage.jsx](frontend/src/components/LoginPage.jsx)** —
   password login form.
 - **[frontend/src/components/Dashboard.jsx](frontend/src/components/Dashboard.jsx)** —
-  tab navigation between "Captures" and "Logs".
+  tab navigation between "Captures", "Logs" and "Live Stream".
 - **[frontend/src/components/CapturesGrid.jsx](frontend/src/components/CapturesGrid.jsx)**
   — polls `/api/captures` and renders trigger images/videos in a responsive grid.
 - **[frontend/src/components/LogViewer.jsx](frontend/src/components/LogViewer.jsx)** —
   polls `/api/logs` and displays the live-tailing logfile content.
+- **[frontend/src/components/LiveStreamView.jsx](frontend/src/components/LiveStreamView.jsx)**
+  — mounted only while the "Live Stream" tab is active; renders an `<img>` pointed at
+  `/api/stream`, showing a "Loading" message until the first frame arrives. Switching
+  tabs unmounts it, closing the stream connection so the backend stops annotating
+  frames.
 - **[frontend/src/api.js](frontend/src/api.js)** — fetch helpers for the JSON API.
 
 The layout is responsive and usable on phones, tablets, and desktops connected to the

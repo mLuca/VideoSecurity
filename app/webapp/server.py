@@ -10,9 +10,10 @@ import time
 from functools import wraps
 from pathlib import Path
 
-from flask import Flask, jsonify, request, send_from_directory, session
+from flask import Flask, Response, jsonify, request, send_from_directory, session
 
 from app.config import Config
+from app.live_stream import stream_hub
 from app.logging_provider import get_logger
 
 # Simple in-memory brute-force throttle: IP -> (failed_attempts, locked_until_ts)
@@ -127,6 +128,28 @@ def create_app(config: Config) -> Flask:
             fh.seek(max(0, size - max_bytes))
             content = fh.read()
         return jsonify({"content": content})
+
+    @app.get("/api/stream")
+    @login_required
+    def api_stream():
+        def generate():
+            stream_hub.add_viewer()
+            last_seen_id = 0
+            try:
+                while True:
+                    jpeg, last_seen_id = stream_hub.next_frame(last_seen_id, timeout=15.0)
+                    if jpeg is None:
+                        break  # no frame arrived in time; let the client retry
+                    yield (
+                        b"--frame\r\n"
+                        b"Content-Type: image/jpeg\r\n"
+                        b"Content-Length: " + str(len(jpeg)).encode() + b"\r\n\r\n"
+                        + jpeg + b"\r\n"
+                    )
+            finally:
+                stream_hub.remove_viewer()
+
+        return Response(generate(), mimetype="multipart/x-mixed-replace; boundary=frame")
 
     @app.get("/assets/<path:filename>")
     def frontend_assets(filename: str):

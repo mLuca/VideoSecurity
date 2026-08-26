@@ -192,6 +192,40 @@ main {
   font-size: 0.85rem;
 }
 
+.livestream-view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.livestream-status {
+  color: var(--muted);
+}
+
+.livestream-status.error {
+  color: var(--error);
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.livestream-image {
+  max-width: 100%;
+  border-radius: var(--radius);
+  background: #000;
+}
+
 /* Tablet and up */
 @media (min-width: 768px) {
   .tabs {

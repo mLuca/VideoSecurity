@@ -1,6 +1,7 @@
 import { useState } from "react";
 import CapturesGrid from "./CapturesGrid.jsx";
 import LogViewer from "./LogViewer.jsx";
+import LiveStreamView from "./LiveStreamView.jsx";
 import { logout } from "../api.js";
 
 export default function Dashboard({ onLoggedOut }) {
@@ -33,6 +34,12 @@ export default function Dashboard({ onLoggedOut }) {
         >
           Logs
         </button>
+        <button
+          className={`tab-button ${activeTab === "livestream" ? "active" : ""}`}
+          onClick={() => setActiveTab("livestream")}
+        >
+          Live Stream
+        </button>
       </nav>
 
       <main>
@@ -45,6 +52,12 @@ export default function Dashboard({ onLoggedOut }) {
           className={`tab-panel ${activeTab === "logs" ? "active" : ""}`}
         >
           <LogViewer />
+        </section>
+        <section
+          className={`tab-panel ${activeTab === "livestream" ? "active" : ""}`}
+        >
+          {/* Mounted only while selected so the stream connection opens/closes with the tab. */}
+          {activeTab === "livestream" && <LiveStreamView />}
         </section>
       </main>
     </>
