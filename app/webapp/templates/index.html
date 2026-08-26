@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Muelltonnen Security</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Muelltonnen Security</h1>
+    <a class="logout-link" href="/logout">Log out</a>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-button active" data-tab="captures">Captures</button>
+    <button class="tab-button" data-tab="logs">Logs</button>
+  </nav>
+
+  <main>
+    <section id="captures" class="tab-panel active">
+      <div id="captures-list" class="captures-grid">Loading...</div>
+    </section>
+
+    <section id="logs" class="tab-panel">
+      <pre id="logs-content" class="logs-view">Loading...</pre>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
