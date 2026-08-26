@@ -42,7 +42,7 @@ class Config:
     model_path: str = str(BASE_DIR / "Model" / "Muell+Person_310726_yolo11n_ncnn_model")
     camera_index: int = 0
     frame_width: int = 640
-    frame_height: int = 480
+    frame_height: int = 640
     # Target rate at which the main loop reads/processes frames; the loop paces
     # itself (via sleeps) to match this, regardless of the camera's native FPS.
     target_fps: int = 15

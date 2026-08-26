@@ -3,7 +3,7 @@
     "model_path": "Model/Muell+Person_310726_yolo11n_ncnn_model",
     "camera_index": 0,
     "frame_width": 640,
-    "frame_height": 480,
+    "frame_height": 640,
     "target_fps": 15,
     "detection_confidence": 0.5
   },

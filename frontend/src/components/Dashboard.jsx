@@ -46,12 +46,13 @@ export default function Dashboard({ onLoggedOut }) {
         <section
           className={`tab-panel ${activeTab === "captures" ? "active" : ""}`}
         >
-          <CapturesGrid />
+          {/* Mounted only while selected so polling stops when the tab isn't shown. */}
+          {activeTab === "captures" && <CapturesGrid />}
         </section>
         <section
           className={`tab-panel ${activeTab === "logs" ? "active" : ""}`}
         >
-          <LogViewer />
+          {activeTab === "logs" && <LogViewer />}
         </section>
         <section
           className={`tab-panel ${activeTab === "livestream" ? "active" : ""}`}
