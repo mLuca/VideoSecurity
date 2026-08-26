@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 import cv2
+import numpy as np
 from ultralytics import YOLO
 
 from app.config import Config, DEFAULT_CONFIG_PATH
@@ -62,6 +63,9 @@ def main():
     logger.info("Starting webcam detection.")
 
     model = YOLO(config.model_path)
+    # First inference pays a one-time model setup cost (~1-2s); warm it up here with a "black image"
+    # so it doesn't get mistaken for a sustained FPS drop once the paced loop starts.
+    model(np.zeros((config.frame_height, config.frame_width, 3), dtype=np.uint8), verbose=False)
 
     cap = cv2.VideoCapture(config.camera_index)
     if not cap.isOpened():
