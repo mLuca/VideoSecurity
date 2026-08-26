@@ -11,3 +11,7 @@ wheels/
 
 # Runtime data (captures & logs)
 data/
+
+# Local configuration overrides may contain real secrets; keep the template tracked
+configurations/*.json
+!configurations/default_config.json

@@ -61,8 +61,8 @@ def create_app(config: Config) -> Flask:
 
     if config.web_password == "changeme":
         logger.warning(
-            "WEBUI_PASSWORD is not set; using insecure default password. "
-            "Set the WEBUI_PASSWORD environment variable."
+            "web_password is set to the insecure default value. "
+            "Set a real password in your JSON configuration file."
         )
 
     @app.get("/api/session")

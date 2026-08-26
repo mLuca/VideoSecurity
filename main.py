@@ -1,10 +1,14 @@
+import argparse
+import logging
 import os
+import sys
 import threading
+from pathlib import Path
 
 import cv2
 from ultralytics import YOLO
 
-from app.config import config
+from app.config import Config, DEFAULT_CONFIG_PATH
 from app.live_stream import stream_hub
 from app.logging_provider import setup_logging
 from app.recorder import EventRecorder
@@ -19,12 +23,39 @@ def has_display() -> bool:
     return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
 
 
-def start_web_server() -> None:
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="main.py",
+        description="Muelltonnen Security: webcam detection loop and web UI.",
+    )
+    parser.add_argument(
+        "--config",
+        metavar="PATH",
+        help="Path (absolute or relative) to a JSON configuration file. "
+        f"Defaults to {DEFAULT_CONFIG_PATH}.",
+    )
+    return parser.parse_args()
+
+
+def load_config(config_arg: str | None) -> Config:
+    config_path = Path(config_arg).expanduser().resolve() if config_arg else DEFAULT_CONFIG_PATH
+    try:
+        return Config.load(config_path)
+    except (FileNotFoundError, ValueError, OSError) as exc:
+        logging.basicConfig(level=logging.ERROR, format="%(asctime)s [%(levelname)s] %(message)s")
+        logging.error("Failed to load configuration from %s: %s", config_path, exc)
+        sys.exit(1)
+
+
+def start_web_server(config: Config) -> None:
     app = create_app(config)
     app.run(host=config.web_host, port=config.web_port, threaded=True, use_reloader=False)
 
 
 def main():
+    args = parse_args()
+    config = load_config(args.config)
+
     config.ensure_directories()
     logger = setup_logging(config)
     logger.info("Starting webcam detection.")
@@ -50,7 +81,7 @@ def main():
     ring_buffer = RingBuffer(ring_buffer_size)
     recorder = EventRecorder(config, logger, fps)
 
-    web_thread = threading.Thread(target=start_web_server, daemon=True)
+    web_thread = threading.Thread(target=start_web_server, args=(config,), daemon=True)
     web_thread.start()
     logger.info("Web UI listening on http://%s:%d", config.web_host, config.web_port)
 

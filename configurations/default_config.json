@@ -1,0 +1,36 @@
+{
+  "model_camera": {
+    "model_path": "Model/Muell+Person_310726_yolo11n_ncnn_model",
+    "camera_index": 0,
+    "frame_width": 640,
+    "frame_height": 480,
+    "default_fps": 15.0,
+    "detection_confidence": 0.5
+  },
+  "class_names": {
+    "person_class_name": "Person",
+    "trashbin_class_name": "German Trashbin"
+  },
+  "ring_buffer": {
+    "pre_time": 5,
+    "post_time": 5
+  },
+  "trigger": {
+    "trigger_max_pixels": 60,
+    "trigger_max_fraction": 0.1
+  },
+  "storage": {
+    "data_dir": "data",
+    "captures_dir_name": "captures",
+    "logs_dir_name": "logs",
+    "log_file_name": "app.log",
+    "video_extension": ".mp4",
+    "video_fourcc": "mp4v"
+  },
+  "web_ui": {
+    "web_host": "0.0.0.0",
+    "web_port": 5000,
+    "web_password": "changeme",
+    "web_secret_key": "2dc12cd3b4aae04dff6d8bd68cb3ea1fd2a357de92288dde7301bbc99acabd49"
+  }
+}
