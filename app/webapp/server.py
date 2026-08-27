@@ -6,6 +6,7 @@ the JSON API (auth, captures listing, logs) plus the built static assets.
 from __future__ import annotations
 
 import hmac
+import shutil
 import time
 from functools import wraps
 from pathlib import Path
@@ -94,27 +95,38 @@ def create_app(config: Config) -> Flask:
     @app.get("/api/captures")
     @login_required
     def api_captures():
-        files = sorted(
-            config.captures_dir.glob("*"),
-            key=lambda p: p.stat().st_mtime,
+        capture_dirs = sorted(
+            (path for path in config.captures_dir.iterdir() if path.is_dir()),
+            key=lambda path: path.stat().st_mtime,
             reverse=True,
         )
         items = [
             {
-                "name": f.name,
-                "type": "video" if f.suffix.lower() in (".mp4", ".avi", ".mov") else "image",
-                "size": f.stat().st_size,
-                "modified": f.stat().st_mtime,
+                "name": capture_dir.name,
+                "modified": capture_dir.stat().st_mtime,
+                "has_video": (capture_dir / "video.mp4").is_file(),
             }
-            for f in files
-            if f.is_file()
+            for capture_dir in capture_dirs
+            if (capture_dir / "trigger.jpeg").is_file()
         ]
         return jsonify(items)
 
-    @app.get("/captures/<path:filename>")
+    @app.get("/captures/<path:capture_name>/<path:filename>")
     @login_required
-    def get_capture(filename: str):
-        return send_from_directory(config.captures_dir, filename)
+    def get_capture(capture_name: str, filename: str):
+        if filename not in {"trigger.jpeg", "video.mp4"}:
+            return jsonify({"error": "capture file not found"}), 404
+        return send_from_directory(config.captures_dir / capture_name, filename)
+
+    @app.delete("/api/captures/<capture_name>")
+    @login_required
+    def delete_capture(capture_name: str):
+        captures_dir = config.captures_dir.resolve()
+        capture_dir = (captures_dir / capture_name).resolve()
+        if capture_dir.parent != captures_dir or not capture_dir.is_dir():
+            return jsonify({"error": "capture not found"}), 404
+        shutil.rmtree(capture_dir)
+        return jsonify({"ok": True})
 
     @app.get("/api/logs")
     @login_required

@@ -27,9 +27,9 @@ API server) and a React frontend (the browser UI). They communicate over HTTP/JS
   center is lower and further right than a `German Trashbin` box center, within
   `max(60px, 10% of frame dimension)` per axis.
 - **[app/recorder.py](app/recorder.py)** — `EventRecorder` state machine. On trigger it
-  immediately saves the annotated frame as `[date]-[time]_trigger.jpeg`, then keeps
-  collecting frames for `post_time` seconds before writing the combined pre+post clip
-  as `[date]-[time]_video.mp4`. Both files are written to `data/captures/`.
+  creates a timestamp-named directory, immediately saves the annotated frame as
+  `trigger.jpeg`, then keeps collecting frames for `post_time` seconds before writing
+  the combined pre+post clip as `video.mp4` in that directory.
 - **[app/logging_provider.py](app/logging_provider.py)** — configures logging to both
   the console and a rotating logfile at `data/logs/app.log`.
 - **[app/live_stream.py](app/live_stream.py)** — `StreamHub`, a thread-safe hand-off
@@ -38,9 +38,10 @@ API server) and a React frontend (the browser UI). They communicate over HTTP/JS
   annotation work happens otherwise.
 - **[app/webapp/server.py](app/webapp/server.py)** — a Flask app that exposes a small
   JSON API (`/api/session`, `/api/login`, `/api/logout`, `/api/captures`, `/api/logs`,
-  `/captures/<file>`, `/api/stream`) and serves the built React frontend as static
-  files. Login is password-based (`WEBUI_PASSWORD`), backed by a server-side session
-  cookie, with a simple brute-force lockout after repeated failed attempts.
+  `/api/captures/<name>` for deletion, `/captures/<name>/<file>` for media,
+  `/api/stream`) and serves the built React frontend as static files. Login is
+  password-based (`WEBUI_PASSWORD`), backed by a server-side session cookie, with a
+  simple brute-force lockout after repeated failed attempts.
   `/api/stream` serves an MJPEG (`multipart/x-mixed-replace`) feed of the annotated
   frames, registering/deregistering a viewer with `StreamHub` for the lifetime of the
   HTTP connection.
@@ -56,7 +57,10 @@ A Vite + React single-page app that talks to the Flask API above.
 - **[frontend/src/components/Dashboard.jsx](frontend/src/components/Dashboard.jsx)** —
   tab navigation between "Captures", "Logs" and "Live Stream".
 - **[frontend/src/components/CapturesGrid.jsx](frontend/src/components/CapturesGrid.jsx)**
-  — polls `/api/captures` and renders trigger images/videos in a responsive grid.
+  — polls `/api/captures` and renders timestamped capture cards in a responsive grid.
+- **[frontend/src/components/CaptureCard.jsx](frontend/src/components/CaptureCard.jsx)**
+  — displays each trigger frame with play and delete actions. Video playback is loaded
+  only after Play is pressed.
 - **[frontend/src/components/LogViewer.jsx](frontend/src/components/LogViewer.jsx)** —
   polls `/api/logs` and displays the live-tailing logfile content.
 - **[frontend/src/components/LiveStreamView.jsx](frontend/src/components/LiveStreamView.jsx)**
@@ -73,7 +77,10 @@ same local network as the device running the camera.
 
 ```
 data/
-  captures/   # <date>-<time>_trigger.jpeg and <date>-<time>_video.mp4
+  captures/
+    <date>-<time>/
+      trigger.jpeg
+      video.mp4
   logs/
     app.log   # rotating logfile, also shown live in the web UI
 ```

@@ -181,6 +181,63 @@ main {
   word-break: break-all;
 }
 
+.capture-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.capture-actions button {
+  width: 3rem;
+  height: 3rem;
+  padding: 0.5rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: #5bbf86;
+  color: #071b10;
+  font: inherit;
+  font-size: 1.35rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+
+.capture-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.capture-actions .danger-button {
+  background: #d96b6b;
+  color: #2b0808;
+}
+
+.video-player {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 90%);
+}
+
+.video-player video {
+  max-width: 100%;
+  max-height: 90vh;
+  background: #000;
+}
+
+.video-player button {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 0;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
 .logs-view {
   background: var(--surface);
   border-radius: var(--radius);

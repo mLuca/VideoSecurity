@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
-import { fetchCaptures } from "../api.js";
-
-function formatBytes(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
+import { deleteCapture, fetchCaptures } from "../api.js";
+import CaptureCard from "./CaptureCard.jsx";
 
 export default function CapturesGrid() {
   const [items, setItems] = useState([]);
   const [error, setError] = useState(null);
+
+  async function handleDelete(name) {
+    try {
+      await deleteCapture(name);
+      setItems((current) => current.filter((item) => item.name !== name));
+    } catch {
+      setError("Failed to delete capture.");
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -40,26 +44,7 @@ export default function CapturesGrid() {
   return (
     <div className="captures-grid">
       {items.map((item) => (
-        <div className="capture-card" key={item.name}>
-          {item.type === "video" ? (
-            <video
-              controls
-              src={`/captures/${encodeURIComponent(item.name)}`}
-            />
-          ) : (
-            <img
-              loading="lazy"
-              src={`/captures/${encodeURIComponent(item.name)}`}
-              alt={item.name}
-            />
-          )}
-          <div className="capture-meta">
-            {item.name}
-            <br />
-            {new Date(item.modified * 1000).toLocaleString()} -{" "}
-            {formatBytes(item.size)}
-          </div>
-        </div>
+        <CaptureCard item={item} onDelete={handleDelete} key={item.name} />
       ))}
     </div>
   );

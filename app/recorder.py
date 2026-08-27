@@ -28,7 +28,7 @@ class EventRecorder:
         self._post_target_frames = max(1, round(config.post_time * fps))
 
         self._recording = False
-        self._base_name: Optional[str] = None
+        self._event_dir: Optional[Path] = None
         self._pre_frames: List[np.ndarray] = []
         self._post_frames: List[np.ndarray] = []
 
@@ -46,7 +46,9 @@ class EventRecorder:
             return
 
         timestamp = datetime.now()
-        self._base_name = timestamp.strftime("%Y-%m-%d-%H-%M-%S")
+        event_name = timestamp.strftime("%Y-%m-%d-%H-%M-%S")
+        self._event_dir = self._config.captures_dir / event_name
+        self._event_dir.mkdir(parents=True, exist_ok=True)
         self._pre_frames = pre_frames
         self._post_frames = []
         self._recording = True
@@ -72,12 +74,14 @@ class EventRecorder:
         if len(self._post_frames) >= self._post_target_frames:
             self._finalize_video()
             self._recording = False
-            self._base_name = None
+            self._event_dir = None
             self._pre_frames = []
             self._post_frames = []
 
     def _save_trigger_frame(self, annotated_frame: np.ndarray) -> None:
-        path = self._config.captures_dir / f"{self._base_name}_trigger.jpeg"
+        if self._event_dir is None:
+            return
+        path = self._event_dir / "trigger.jpeg"
         try:
             cv2.imwrite(str(path), annotated_frame)
             self._logger.info("Saved trigger frame to %s", path)
@@ -87,10 +91,12 @@ class EventRecorder:
     def _finalize_video(self) -> None:
         frames = self._pre_frames + self._post_frames
         if not frames:
-            self._logger.error("No frames collected for event %s; skipping video", self._base_name)
+            self._logger.error("No frames collected for event %s; skipping video", self._event_dir)
             return
 
-        path = self._config.captures_dir / f"{self._base_name}_video{self._config.video_extension}"
+        if self._event_dir is None:
+            return
+        path = self._event_dir / "video.mp4"
         height, width = frames[0].shape[:2]
         fourcc = cv2.VideoWriter_fourcc(*self._config.video_fourcc)
         writer = cv2.VideoWriter(str(path), fourcc, self._fps, (width, height))

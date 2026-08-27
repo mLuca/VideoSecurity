@@ -32,6 +32,13 @@ export async function fetchCaptures() {
   return res.json();
 }
 
+export async function deleteCapture(name) {
+  const res = await apiFetch(`/api/captures/${encodeURIComponent(name)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error("Failed to delete capture.");
+}
+
 export async function fetchLogs() {
   const res = await apiFetch("/api/logs");
   if (!res.ok) throw new Error("Failed to load logs.");
