@@ -45,8 +45,8 @@ class Config:
     frame_height: int = 640
     # Target rate at which the main loop reads/processes frames; the loop paces
     # itself (via sleeps) to match this, regardless of the camera's native FPS.
-    target_fps: int = 15
-    detection_confidence: float = 0.5
+    target_fps: int = 10
+    detection_confidence: float = 0.6
 
     # Class names as defined in Model metadata.yaml
     person_class_name: str = "Person"
