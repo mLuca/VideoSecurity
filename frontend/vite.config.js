@@ -11,4 +11,9 @@ export default defineConfig({
       "/captures": "http://localhost:5000",
     },
   },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: "./src/setupTests.js",
+  },
 });
