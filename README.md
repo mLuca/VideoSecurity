@@ -159,6 +159,38 @@ server proxies API/media calls to Flask (see [frontend/vite.config.js](frontend/
    Log in with the password from `web_password` in your config file (defaults to
    `changeme` — set a real value, see [Configuration](#configuration) above).
 
+## Testing
+
+### Backend tests
+
+```bash
+uv run pytest
+```
+
+Runs the [pytest](https://docs.pytest.org/) suite in [tests/](tests/), which covers
+`app/config.py`, `app/trigger.py`, `app/ring_buffer.py`, `app/recorder.py` (with
+`cv2` mocked at the boundary, so no real video codec is needed), `app/live_stream.py`,
+`app/logging_provider.py`, the pure helpers in `main.py`, and the Flask API in
+`app/webapp/server.py` (auth, session handling, brute-force lockout, path-traversal
+guards) via Flask's test client. The camera/model capture loop itself isn't covered
+here — it needs real hardware — but the decision logic it delegates to is.
+
+### Frontend tests
+
+```bash
+cd frontend
+npm test
+```
+
+Runs the [Vitest](https://vitest.dev/) + [React Testing Library](https://testing-library.com/react)
+suite (colocated `*.test.jsx`/`*.test.js` files next to each component and
+`api.js`). Use `npm run test:watch` for a watch-mode run while developing.
+
+### Continuous integration
+
+[.github/workflows/test.yml](.github/workflows/test.yml) runs both suites on every
+push and pull request.
+
 ## Build and deploy
 
 For a real deployment, the frontend is built once into static files and served
