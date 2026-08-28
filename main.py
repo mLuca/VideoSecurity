@@ -5,6 +5,7 @@ import sys
 import threading
 import time
 from pathlib import Path
+from typing import Callable, Generic, Optional, TypeVar, cast
 
 import cv2
 import numpy as np
@@ -17,6 +18,23 @@ from app.recorder import EventRecorder
 from app.ring_buffer import RingBuffer
 from app.trigger import extract_detections, find_trigger
 from app.webapp.server import create_app
+
+T = TypeVar("T")
+
+
+class LazyGetter(Generic[T]):
+    """Wraps a zero-arg factory and computes it at most once, on first `get()`."""
+
+    def __init__(self, factory: Callable[[], T]) -> None:
+        self._factory = factory
+        self._value: Optional[T] = None
+        self._done = False
+
+    def get(self) -> T:
+        if not self._done:
+            self._value = self._factory()
+            self._done = True
+        return cast(T, self._value)
 
 
 def has_display() -> bool:
@@ -113,31 +131,23 @@ def main():
                     logger.exception("Model inference failed.")
                     continue
 
-                # Only pay the annotation-drawing cost when it's actually needed.
-                needs_annotated_frame = gui_enabled or stream_hub.has_viewers
+                # Computed at most once per iteration, only if someone actually needs it.
+                annotated = LazyGetter(lambda: results[0].plot())
 
-                if recorder.is_recording:
-                    recorder.feed_post_frame(frame)
-                    annotated_frame = results[0].plot() if needs_annotated_frame else None
-                else:
-                    annotated_frame = None
-                    try:
-                        detections = extract_detections(results[0], config.detection_confidence)
-                        trigger_event = find_trigger(detections, config.frame_width, config.frame_height, config)
-                        if trigger_event is not None:
-                            annotated_frame = results[0].plot()
-                            recorder.maybe_trigger(trigger_event, annotated_frame, ring_buffer.snapshot())
-                    except Exception:
-                        logger.exception("Error while evaluating trigger condition.")
+                try:
+                    detections = extract_detections(results[0], config.detection_confidence)
+                    trigger_event = find_trigger(detections, config.frame_width, config.frame_height, config)
+                except Exception:
+                    logger.exception("Error while evaluating trigger condition.")
+                    trigger_event = None
 
-                    if needs_annotated_frame and annotated_frame is None:
-                        annotated_frame = results[0].plot()
+                recorder.handle_frame(frame, trigger_event, annotated.get, ring_buffer.snapshot)
 
-                if annotated_frame is not None and stream_hub.has_viewers:
-                    stream_hub.publish_frame(annotated_frame)
+                if stream_hub.has_viewers:
+                    stream_hub.publish_frame(annotated.get())
 
                 if gui_enabled:
-                    cv2.imshow("Muelltonnen Security", annotated_frame)
+                    cv2.imshow("Muelltonnen Security", annotated.get())
                     cv2.waitKey(1)
             finally:
                 # Pace the loop to target_fps regardless of how the iteration exited.

@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 import cv2
 import numpy as np
@@ -19,6 +19,8 @@ class EventRecorder:
     While idle, a new trigger immediately saves the annotated trigger frame
     and starts collecting `post_time` seconds worth of subsequent raw frames.
     While recording, new triggers are ignored so a single event is captured.
+    `handle_frame()` is the sole entry point; it owns the recording/idle
+    branch internally so callers don't need to track or check the state.
     """
 
     def __init__(self, config: Config, logger: logging.Logger, fps: float) -> None:
@@ -32,19 +34,29 @@ class EventRecorder:
         self._pre_frames: List[np.ndarray] = []
         self._post_frames: List[np.ndarray] = []
 
-    @property
-    def is_recording(self) -> bool:
-        return self._recording
+    def handle_frame(
+        self,
+        raw_frame: np.ndarray,
+        trigger_event: Optional[TriggerEvent],
+        annotated_frame_fn: Callable[[], np.ndarray],
+        pre_frames_fn: Callable[[], List[np.ndarray]],
+    ) -> None:
+        """Feed a post-frame if recording, else start recording on a trigger.
 
-    def maybe_trigger(
+        `annotated_frame_fn`/`pre_frames_fn` are only called when actually
+        needed, so callers can pass cheap closures around expensive work.
+        """
+        if self._recording:
+            self._feed_post_frame(raw_frame)
+        elif trigger_event is not None:
+            self._start_recording(trigger_event, annotated_frame_fn(), pre_frames_fn())
+
+    def _start_recording(
         self,
         trigger_event: TriggerEvent,
         annotated_frame: np.ndarray,
         pre_frames: List[np.ndarray],
     ) -> None:
-        if self._recording:
-            return
-
         timestamp = datetime.now()
         event_name = timestamp.strftime("%Y-%m-%d-%H-%M-%S")
         self._event_dir = self._config.captures_dir / event_name
@@ -66,10 +78,7 @@ class EventRecorder:
             trigger_event.threshold_y,
         )
 
-    def feed_post_frame(self, frame: np.ndarray) -> None:
-        if not self._recording:
-            return
-
+    def _feed_post_frame(self, frame: np.ndarray) -> None:
         self._post_frames.append(frame.copy())
         if len(self._post_frames) >= self._post_target_frames:
             self._finalize_video()
